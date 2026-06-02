@@ -7,8 +7,10 @@ import {
   RadioBackendInfo,
   RadioMode,
   RadioStatus,
+  TxSafetyStatus,
 } from '../models/radio-status.model';
 import { BandCheckResult } from '../models/band-check.model';
+
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +21,18 @@ export class RadioApiService {
 
   getStatus() {
     return this.http.get<RadioStatus>(`${this.apiUrl}/radio/status`);
+  }
+
+  getTxArmStatus() {
+    return this.http.get<TxSafetyStatus>(`${this.apiUrl}/radio/tx-arm`);
+  }
+
+  armTx() {
+    return this.http.post<TxSafetyStatus>(`${this.apiUrl}/radio/tx-arm`, {});
+  }
+
+  disarmTxBackend() {
+    return this.http.post<TxSafetyStatus>(`${this.apiUrl}/radio/tx-disarm`, {});
   }
 
   setFrequency(frequencyHz: number) {

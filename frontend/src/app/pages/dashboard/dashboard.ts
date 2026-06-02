@@ -72,10 +72,40 @@ export class Dashboard implements OnInit {
       this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
       this.radioWs.status.set(radioStatus);
     });
+
+    this.radioApi.getTxArmStatus().subscribe((txStatus) => {
+      this.txArmed.set(txStatus.tx_armed);
+    });
   }
 
   toggleTxArm(): void {
-    this.txArmed.update((armed) => !armed);
+    this.commandError.set(null);
+
+    if (this.txArmed()) {
+      this.radioApi.disarmTxBackend().subscribe({
+        next: (txStatus) => {
+          this.txArmed.set(txStatus.tx_armed);
+
+          this.radioApi.getStatus().subscribe((radioStatus) => {
+            this.radioWs.status.set(radioStatus);
+          });
+        },
+        error: (error) => {
+          this.commandError.set(error.error?.detail ?? 'Failed to disarm TX.');
+        },
+      });
+
+      return;
+    }
+
+    this.radioApi.armTx().subscribe({
+      next: (txStatus) => {
+        this.txArmed.set(txStatus.tx_armed);
+      },
+      error: (error) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to arm TX.');
+      },
+    });
   }
 
   disarmTx(): void {
@@ -202,14 +232,14 @@ export class Dashboard implements OnInit {
   }
 
   togglePtt(): void {
-    if (!this.txArmed()) {
-      this.commandError.set('TX is not armed. Click Arm TX before using PTT.');
-      return;
-    }
-
     const current = this.status();
 
     if (!current) {
+      return;
+    }
+
+    if (!this.txArmed()) {
+      this.commandError.set('TX is not armed. Click Arm TX before using PTT.');
       return;
     }
 
@@ -224,6 +254,7 @@ export class Dashboard implements OnInit {
         }
       },
       error: (error) => {
+        this.disarmTx();
         this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
       },
     });
@@ -255,10 +286,14 @@ export class Dashboard implements OnInit {
     const current = this.status();
 
     if (current?.ptt) {
-      this.radioApi.setPtt(false).subscribe({
-        next: (radioStatus) => {
-          this.radioWs.status.set(radioStatus);
-          this.performBackendSwitch(backend);
+      this.radioApi.disarmTxBackend().subscribe({
+        next: () => {
+          this.disarmTx();
+
+          this.radioApi.getStatus().subscribe((radioStatus) => {
+            this.radioWs.status.set(radioStatus);
+            this.performBackendSwitch(backend);
+          });
         },
         error: (error) => {
           this.commandError.set(error.error?.detail ?? 'Failed to release PTT before switching backend.');

@@ -9,6 +9,7 @@ from alpha_fox.radio.models import (
 )
 from alpha_fox.radio.service import radio_manager
 from alpha_fox.station.band_edges import BandCheckResult, check_band_edges
+from alpha_fox.radio.tx_safety import TxSafetyStatus, tx_safety_manager
 
 router = APIRouter(prefix="/radio", tags=["radio"])
 
@@ -40,7 +41,14 @@ def get_radio_backend() -> RadioBackendInfo:
 @router.post("/backend", response_model=RadioBackendInfo)
 def set_radio_backend(request: BackendRequest) -> RadioBackendInfo:
     try:
+        radio_status = radio_manager.radio.get_status()
+
+        if radio_status.ptt:
+            radio_manager.radio.set_ptt(False)
+
+        tx_safety_manager.disarm()
         radio_manager.switch_backend(request.backend)
+
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
@@ -70,6 +78,12 @@ def set_frequency(request: FrequencyRequest) -> RadioStatus:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/band-check/{frequency_hz}", response_model=BandCheckResult)
+def check_frequency_band(frequency_hz: int) -> BandCheckResult:
+    return check_band_edges(frequency_hz)
+
+
+
 @router.post("/mode", response_model=RadioStatus)
 def set_mode(request: ModeRequest) -> RadioStatus:
     return radio_manager.radio.set_mode(request.mode)
@@ -78,11 +92,35 @@ def set_mode(request: ModeRequest) -> RadioStatus:
 @router.post("/ptt", response_model=RadioStatus)
 def set_ptt(request: PttRequest) -> RadioStatus:
     try:
-        return radio_manager.radio.set_ptt(request.enabled)
+        if request.enabled:
+            tx_safety_manager.require_armed()
+
+        radio_status = radio_manager.radio.set_ptt(request.enabled)
+
+        if not radio_status.ptt:
+            tx_safety_manager.disarm()
+
+        return radio_status
+
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.get("/band-check/{frequency_hz}", response_model=BandCheckResult)
-def check_frequency_band(frequency_hz: int) -> BandCheckResult:
-    return check_band_edges(frequency_hz)
+@router.get("/tx-arm", response_model=TxSafetyStatus)
+def get_tx_arm_status() -> TxSafetyStatus:
+    return tx_safety_manager.status()
+
+
+@router.post("/tx-arm", response_model=TxSafetyStatus)
+def arm_tx() -> TxSafetyStatus:
+    return tx_safety_manager.arm()
+
+
+@router.post("/tx-disarm", response_model=TxSafetyStatus)
+def disarm_tx() -> TxSafetyStatus:
+    radio_status = radio_manager.radio.get_status()
+
+    if radio_status.ptt:
+        radio_manager.radio.set_ptt(False)
+
+    return tx_safety_manager.disarm()

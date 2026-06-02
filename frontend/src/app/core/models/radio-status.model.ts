@@ -20,3 +20,9 @@ export interface RadioBackendInfo {
   active_backend: RadioBackend;
   available_backends: RadioBackend[];
 }
+
+
+export interface TxSafetyStatus {
+  tx_armed: boolean;
+  message: string;
+}
