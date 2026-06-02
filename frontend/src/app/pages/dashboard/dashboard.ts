@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { RadioApiService } from '../../core/services/radio-api.service';
 import { RadioStatusWsService } from '../../core/services/radio-status-ws.service';
@@ -18,7 +19,7 @@ import {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, WaterfallView],
+  imports: [FormsModule, RouterLink, WaterfallView],
   templateUrl: './dashboard.html',
 })
 export class Dashboard implements OnInit {
@@ -48,9 +49,6 @@ export class Dashboard implements OnInit {
     { label: '10m FT8', frequencyHz: 28074000, mode: 'USB' as RadioMode },
   ];
 
-  readonly activeBackend = signal<RadioBackend>('mock');
-  readonly availableBackends = signal<RadioBackend[]>([]);
-  readonly backendError = signal<string | null>(null);
   readonly commandError = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -63,8 +61,6 @@ export class Dashboard implements OnInit {
 
     this.radioApi.getBackend().subscribe((info) => {
       console.log('Backend info:', info);
-      this.activeBackend.set(info.active_backend);
-      this.availableBackends.set(info.available_backends);
     });
 
     this.radioApi.getStatus().subscribe((radioStatus) => {
@@ -256,86 +252,6 @@ export class Dashboard implements OnInit {
       error: (error) => {
         this.disarmTx();
         this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
-      },
-    });
-  }
-
-  onBackendChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const backend = select.value as RadioBackend;
-
-    console.log('Backend dropdown changed:', backend);
-
-    this.backendError.set(null);
-    this.commandError.set(null);
-    this.setBackend(backend);
-  }
-
-  setBackend(backend: RadioBackend): void {
-    console.log('setBackend called:', backend);
-
-    if (backend === this.activeBackend()) {
-      console.log('Backend already active, skipping:', backend);
-      return;
-    }
-
-    this.backendError.set(null);
-    this.commandError.set(null);
-    this.disarmTx();
-
-    const current = this.status();
-
-    if (current?.ptt) {
-      this.radioApi.disarmTxBackend().subscribe({
-        next: () => {
-          this.disarmTx();
-
-          this.radioApi.getStatus().subscribe((radioStatus) => {
-            this.radioWs.status.set(radioStatus);
-            this.performBackendSwitch(backend);
-          });
-        },
-        error: (error) => {
-          this.commandError.set(error.error?.detail ?? 'Failed to release PTT before switching backend.');
-        },
-      });
-
-      return;
-    }
-
-    this.performBackendSwitch(backend);
-  }
-
-    private performBackendSwitch(backend: RadioBackend): void {
-    this.radioApi.setBackend(backend).subscribe({
-      next: (info) => {
-        console.log('Backend switched:', info);
-
-        this.activeBackend.set(info.active_backend);
-        this.availableBackends.set(info.available_backends);
-        this.bandCheck.set(null);
-        this.bandWarning.set(null);
-
-        this.radioWs.reconnect();
-        this.waterfallWs.reconnect();
-
-        this.radioApi.getStatus().subscribe({
-          next: (radioStatus) => {
-            this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
-            this.radioWs.status.set(radioStatus);
-          },
-          error: (error) => {
-            this.commandError.set(error.error?.detail ?? 'Failed to refresh radio status.');
-          },
-        });
-
-        this.appStatus.refresh();
-      },
-      error: (error) => {
-        console.error('Backend switch failed:', error);
-
-        // Usually this should not happen now unless the backend refuses for another reason.
-        this.backendError.set(error.error?.detail ?? 'Failed to switch radio backend.');
       },
     });
   }

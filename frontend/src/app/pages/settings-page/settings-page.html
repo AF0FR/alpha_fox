@@ -1,0 +1,113 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="border-b border-slate-800 bg-slate-900/80 px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-wide">alpha_fox settings</h1>
+        <p class="text-sm text-slate-400">radio backend and app configuration</p>
+      </div>
+
+      <a
+        routerLink="/"
+        class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold hover:bg-slate-700">
+        Back to Dashboard
+      </a>
+    </div>
+  </header>
+
+  @if (backendError) {
+    <div class="mx-6 mt-4 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
+      {{ backendError }}
+    </div>
+  }
+
+  @if (backendMessage) {
+    <div class="mx-6 mt-4 rounded-lg border border-green-800 bg-green-950 px-4 py-3 text-green-200">
+      {{ backendMessage }}
+    </div>
+  }
+
+  <main class="grid gap-4 p-6 lg:grid-cols-2">
+    <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+      <p class="text-sm uppercase tracking-widest text-slate-500">Application</p>
+
+      <div class="mt-4 grid gap-3">
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">App</div>
+          <div class="text-xl font-bold">{{ appStatus.status()?.app ?? 'alpha_fox' }}</div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Backend</div>
+          <div
+            class="text-xl font-bold"
+            [class.text-green-300]="appStatus.status()?.backend === 'running'"
+            [class.text-red-300]="appStatus.status()?.backend !== 'running'">
+            {{ appStatus.status()?.backend ?? 'unknown' }}
+          </div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Radio Device</div>
+          <div
+            class="text-xl font-bold"
+            [class.text-green-300]="appStatus.status()?.radio_connected"
+            [class.text-red-300]="!appStatus.status()?.radio_connected">
+            {{ appStatus.status()?.radio_connected ? 'Connected' : 'Disconnected' }}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+      <p class="text-sm uppercase tracking-widest text-slate-500">Radio Backend</p>
+
+      <div class="mt-4">
+        <label class="mb-2 block text-sm text-slate-400">
+          Active backend
+        </label>
+
+        <select
+          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none focus:border-orange-500"
+          [ngModel]="activeBackend"
+          (ngModelChange)="setBackend($event)">
+          @for (backend of availableBackends; track backend) {
+            <option [value]="backend">
+              {{ backend }}
+            </option>
+          }
+        </select>
+
+        <p class="mt-3 text-sm text-slate-500">
+          mock is stable UI testing, sim behaves more like a radio, and hamlib is for rigctld/G90 later.
+        </p>
+      </div>
+
+      <div class="mt-6 rounded-lg bg-slate-950 p-4">
+        <div class="text-sm text-slate-500">Current backend</div>
+        <div class="text-2xl font-bold text-orange-300">
+          {{ activeBackend }}
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg lg:col-span-2">
+      <p class="text-sm uppercase tracking-widest text-slate-500">Hamlib</p>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Host</div>
+          <div class="mt-1 font-mono text-lg">127.0.0.1</div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Port</div>
+          <div class="mt-1 font-mono text-lg">4532</div>
+        </div>
+      </div>
+
+      <p class="mt-4 text-sm text-slate-500">
+        Editable Hamlib settings will come later. For now, these come from backend config.
+      </p>
+    </section>
+  </main>
+</div>
