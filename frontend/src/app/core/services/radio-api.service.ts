@@ -8,6 +8,7 @@ import {
   RadioMode,
   RadioStatus,
 } from '../models/radio-status.model';
+import { BandCheckResult } from '../models/band-check.model';
 
 @Injectable({
   providedIn: 'root',
@@ -24,6 +25,12 @@ export class RadioApiService {
     return this.http.post<RadioStatus>(`${this.apiUrl}/radio/frequency`, {
       frequency_hz: frequencyHz,
     });
+  }
+
+  checkBand(frequencyHz: number) {
+    return this.http.get<BandCheckResult>(
+      `${this.apiUrl}/radio/band-check/${frequencyHz}`,
+    );
   }
 
   setMode(mode: RadioMode) {

@@ -4,8 +4,16 @@ import { FormsModule } from '@angular/forms';
 import { RadioApiService } from '../../core/services/radio-api.service';
 import { RadioStatusWsService } from '../../core/services/radio-status-ws.service';
 import { WaterfallWsService } from '../../core/services/waterfall-ws.service';
-import { RadioBackend, RadioMode } from '../../core/models/radio-status.model';
+import { RadioBackend, RadioMode, RadioStatus } from '../../core/models/radio-status.model';
 import { WaterfallView } from '../../waterfall/waterfall-view/waterfall-view';
+import { AppStatusService } from '../../core/services/app-status.service';
+import { BandCheckResult } from '../../core/models/band-check.model';
+import {
+  formatFrequencyInput,
+  formatFrequencyMHz,
+  parseFrequencyInput,
+} from '../../core/utils/frequency.util';
+
 
 @Component({
   selector: 'app-dashboard',
@@ -17,8 +25,11 @@ export class Dashboard implements OnInit {
   private readonly radioApi = inject(RadioApiService);
   readonly radioWs = inject(RadioStatusWsService);
   readonly waterfallWs = inject(WaterfallWsService);
+  readonly appStatus = inject(AppStatusService);
 
   readonly frequencyInput = signal('14074000');
+  readonly bandCheck = signal<BandCheckResult | null>(null);
+  readonly bandWarning = signal<string | null>(null);
 
   readonly status = computed(() => this.radioWs.status());
   readonly latestWaterfallFrame = computed(() => this.waterfallWs.latestFrame());
@@ -43,6 +54,8 @@ export class Dashboard implements OnInit {
   ngOnInit(): void {
     console.log('Dashboard ngOnInit running');
 
+    this.appStatus.refresh();
+
     this.radioWs.connect();
     this.waterfallWs.connect();
 
@@ -52,29 +65,49 @@ export class Dashboard implements OnInit {
       this.availableBackends.set(info.available_backends);
     });
 
-    this.radioApi.getStatus().subscribe((status) => {
-      console.log('Radio status:', status);
-      this.frequencyInput.set(status.frequency_hz.toString());
-      this.radioWs.status.set(status);
+    this.radioApi.getStatus().subscribe((radioStatus) => {
+      console.log('Radio status:', radioStatus);
+      this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
+      this.radioWs.status.set(radioStatus);
     });
   }
 
   formatFrequency(frequencyHz: number | undefined | null): string {
-    if (!frequencyHz) {
-      return '--.---.---';
-    }
-
-    return (frequencyHz / 1_000_000).toFixed(6);
+    return formatFrequencyMHz(frequencyHz);
   }
 
   setFrequency(): void {
-    const frequencyHz = Number(this.frequencyInput());
+    const result = parseFrequencyInput(this.frequencyInput());
 
-    if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) {
+    if (result.error || result.frequencyHz === null) {
+      this.commandError.set(result.error ?? 'Invalid frequency.');
       return;
     }
 
-    this.tuneToFrequency(frequencyHz);
+    this.validateAndTune(result.frequencyHz);
+  }
+
+  validateAndTune(frequencyHz: number): void {
+    this.commandError.set(null);
+    this.bandWarning.set(null);
+
+    const roundedFrequency = Math.round(frequencyHz);
+
+    this.radioApi.checkBand(roundedFrequency).subscribe({
+      next: (result) => {
+        this.bandCheck.set(result);
+
+        if (!result.allowed) {
+          this.bandWarning.set(result.message);
+          return;
+        }
+
+        this.tuneToFrequency(roundedFrequency);
+      },
+      error: (error) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to validate frequency.');
+      },
+    });
   }
 
   tuneToFrequency(frequencyHz: number): void {
@@ -83,15 +116,16 @@ export class Dashboard implements OnInit {
     const roundedFrequency = Math.round(frequencyHz);
 
     this.radioApi.setFrequency(roundedFrequency).subscribe({
-      next: (status) => {
-        this.frequencyInput.set(status.frequency_hz.toString());
-        this.radioWs.status.set(status);
+      next: (radioStatus: RadioStatus): void => {
+        this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
+        this.radioWs.status.set(radioStatus);
+        this.bandWarning.set(null);
       },
-      error: (error) => {
+      error: (error: any): void => {
         const current = this.status();
 
         if (current) {
-          this.frequencyInput.set(current.frequency_hz.toString());
+          this.frequencyInput.set(formatFrequencyInput(current.frequency_hz));
         }
 
         this.commandError.set(error.error?.detail ?? 'Failed to set frequency.');
@@ -103,8 +137,8 @@ export class Dashboard implements OnInit {
     this.commandError.set(null);
 
     this.radioApi.setMode(mode).subscribe({
-      next: (status) => {
-        this.radioWs.status.set(status);
+      next: (radioStatus) => {
+        this.radioWs.status.set(radioStatus);
       },
       error: (error) => {
         this.commandError.set(error.error?.detail ?? 'Failed to set mode.');
@@ -113,14 +147,47 @@ export class Dashboard implements OnInit {
   }
 
   setPreset(frequencyHz: number, mode: RadioMode): void {
-    this.frequencyInput.set(frequencyHz.toString());
+    this.commandError.set(null);
+    this.bandWarning.set(null);
+    this.frequencyInput.set(formatFrequencyInput(frequencyHz));
 
-    this.radioApi.setFrequency(frequencyHz).subscribe((status) => {
-      this.radioWs.status.set(status);
+    this.radioApi.checkBand(frequencyHz).subscribe({
+      next: (bandCheck) => {
+        this.bandCheck.set(bandCheck);
 
-      this.radioApi.setMode(mode).subscribe((modeStatus) => {
-        this.radioWs.status.set(modeStatus);
-      });
+        if (!bandCheck.allowed) {
+          this.bandWarning.set(bandCheck.message);
+          return;
+        }
+
+        this.radioApi.setFrequency(frequencyHz).subscribe({
+          next: (radioStatus) => {
+            this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
+            this.radioWs.status.set(radioStatus);
+
+            this.radioApi.setMode(mode).subscribe({
+              next: (modeStatus) => {
+                this.radioWs.status.set(modeStatus);
+              },
+              error: (error) => {
+                this.commandError.set(error.error?.detail ?? 'Failed to set preset mode.');
+              },
+            });
+          },
+          error: (error) => {
+            const current = this.status();
+
+            if (current) {
+              this.frequencyInput.set(formatFrequencyInput(current.frequency_hz));
+            }
+
+            this.commandError.set(error.error?.detail ?? 'Failed to set preset frequency.');
+          },
+        });
+      },
+      error: (error) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to validate preset frequency.');
+      },
     });
   }
 
@@ -134,8 +201,8 @@ export class Dashboard implements OnInit {
     this.commandError.set(null);
 
     this.radioApi.setPtt(!current.ptt).subscribe({
-      next: (status) => {
-        this.radioWs.status.set(status);
+      next: (radioStatus) => {
+        this.radioWs.status.set(radioStatus);
       },
       error: (error) => {
         this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
@@ -170,19 +237,23 @@ export class Dashboard implements OnInit {
 
         this.activeBackend.set(info.active_backend);
         this.availableBackends.set(info.available_backends);
+        this.bandCheck.set(null);
+        this.bandWarning.set(null);
 
         this.radioWs.reconnect();
         this.waterfallWs.reconnect();
 
         this.radioApi.getStatus().subscribe({
-          next: (status) => {
-            this.frequencyInput.set(status.frequency_hz.toString());
-            this.radioWs.status.set(status);
+          next: (radioStatus) => {
+            this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
+            this.radioWs.status.set(radioStatus);
           },
           error: (error) => {
             this.commandError.set(error.error?.detail ?? 'Failed to refresh radio status.');
           },
         });
+
+        this.appStatus.refresh();
       },
       error: (error) => {
         console.error('Backend switch failed:', error);

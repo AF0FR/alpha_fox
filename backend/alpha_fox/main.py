@@ -5,6 +5,7 @@ from alpha_fox.api.routes.radio import router as radio_router
 from alpha_fox.api.websocket.radio_status_ws import router as radio_status_ws_router
 from alpha_fox.api.websocket.waterfall_ws import router as waterfall_ws_router
 from alpha_fox.api.websocket.ping_ws import router as ping_ws_router
+from alpha_fox.api.routes.app_status import router as app_status_router
 
 app = FastAPI(
     title="alpha_fox",
@@ -34,6 +35,7 @@ def root() -> dict[str, str]:
         "radio_status": "/radio/status",
         "radio_status_ws": "/ws/radio/status",
         "waterfall_ws": "/ws/waterfall",
+        "app_status": "/app/status",
     }
 
 
@@ -49,3 +51,4 @@ app.include_router(radio_router)
 app.include_router(radio_status_ws_router)
 app.include_router(waterfall_ws_router)
 app.include_router(ping_ws_router)
+app.include_router(app_status_router)

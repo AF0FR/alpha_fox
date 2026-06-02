@@ -8,6 +8,7 @@ from alpha_fox.radio.models import (
     RadioStatus,
 )
 from alpha_fox.radio.service import radio_manager
+from alpha_fox.station.band_edges import BandCheckResult, check_band_edges
 
 router = APIRouter(prefix="/radio", tags=["radio"])
 
@@ -58,6 +59,11 @@ def get_radio_status() -> RadioStatus:
 
 @router.post("/frequency", response_model=RadioStatus)
 def set_frequency(request: FrequencyRequest) -> RadioStatus:
+    band_check = check_band_edges(request.frequency_hz)
+
+    if not band_check.allowed:
+        raise HTTPException(status_code=400, detail=band_check.message)
+
     try:
         return radio_manager.radio.set_frequency(request.frequency_hz)
     except ValueError as exc:
@@ -75,3 +81,8 @@ def set_ptt(request: PttRequest) -> RadioStatus:
         return radio_manager.radio.set_ptt(request.enabled)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/band-check/{frequency_hz}", response_model=BandCheckResult)
+def check_frequency_band(frequency_hz: int) -> BandCheckResult:
+    return check_band_edges(frequency_hz)
