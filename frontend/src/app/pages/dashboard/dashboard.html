@@ -129,20 +129,19 @@
       <div class="mb-4 flex items-center justify-between">
         <div>
           <p class="text-sm uppercase tracking-widest text-slate-500">Waterfall</p>
-          <h2 class="text-xl font-semibold">Placeholder</h2>
+          <h2 class="text-xl font-semibold">Mock FFT Stream</h2>
         </div>
 
-        <div class="text-sm text-slate-500">
-          I/Q stream not connected yet
+        <div class="rounded-full px-3 py-1 text-sm"
+             [class.bg-green-900]="waterfallWs.connected()"
+             [class.text-green-200]="waterfallWs.connected()"
+             [class.bg-red-900]="!waterfallWs.connected()"
+             [class.text-red-200]="!waterfallWs.connected()">
+          {{ waterfallWs.connected() ? 'Waterfall Connected' : 'Waterfall Disconnected' }}
         </div>
       </div>
 
-      <div class="flex h-72 items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-950">
-        <div class="text-center text-slate-500">
-          <div class="text-lg font-semibold">Waterfall canvas goes here</div>
-          <div class="mt-1 text-sm">Next milestone: FFT frames over WebSocket</div>
-        </div>
-      </div>
+      <app-waterfall-view />
     </section>
   </main>
 </div>

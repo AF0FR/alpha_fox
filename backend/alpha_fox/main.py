@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from alpha_fox.api.routes.radio import router as radio_router
 from alpha_fox.api.websocket.radio_status_ws import router as radio_status_ws_router
+from alpha_fox.api.websocket.waterfall_ws import router as waterfall_ws_router
 
 app = FastAPI(
     title="alpha_fox",
@@ -31,6 +32,7 @@ def root() -> dict[str, str]:
         "health": "/health",
         "radio_status": "/radio/status",
         "radio_status_ws": "/ws/radio/status",
+        "waterfall_ws": "/ws/waterfall",
     }
 
 
@@ -44,3 +46,4 @@ def health() -> dict[str, str]:
 
 app.include_router(radio_router)
 app.include_router(radio_status_ws_router)
+app.include_router(waterfall_ws_router)

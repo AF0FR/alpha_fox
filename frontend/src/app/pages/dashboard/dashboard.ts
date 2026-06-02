@@ -3,17 +3,20 @@ import { FormsModule } from '@angular/forms';
 
 import { RadioApiService } from '../../core/services/radio-api.service';
 import { RadioStatusWsService } from '../../core/services/radio-status-ws.service';
+import { WaterfallWsService } from '../../core/services/waterfall-ws.service';
 import { RadioMode } from '../../core/models/radio-status.model';
+import { WaterfallView } from '../../waterfall/waterfall-view/waterfall-view';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, WaterfallView],
   templateUrl: './dashboard.html',
 })
 export class Dashboard implements OnInit {
   private readonly radioApi = inject(RadioApiService);
   readonly radioWs = inject(RadioStatusWsService);
+  readonly waterfallWs = inject(WaterfallWsService);
 
   readonly frequencyInput = signal('14074000');
 
@@ -33,6 +36,7 @@ export class Dashboard implements OnInit {
 
   ngOnInit(): void {
     this.radioWs.connect();
+    this.waterfallWs.connect();
 
     this.radioApi.getStatus().subscribe((status) => {
       this.frequencyInput.set(status.frequency_hz.toString());
