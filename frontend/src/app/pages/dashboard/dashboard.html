@@ -110,16 +110,30 @@
           </div>
         </div>
 
-        <button
-          type="button"
-          class="rounded-lg px-6 py-4 text-lg font-bold transition"
-          [class.bg-red-600]="status()?.ptt"
-          [class.hover:bg-red-500]="status()?.ptt"
-          [class.bg-slate-700]="!status()?.ptt"
-          [class.hover:bg-slate-600]="!status()?.ptt"
-          (click)="togglePtt()">
-          {{ status()?.ptt ? 'TX' : 'RX' }}
-        </button>
+        <div class="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg px-4 py-2 text-sm font-bold transition"
+            [class.bg-yellow-700]="txArmed()"
+            [class.hover:bg-yellow-600]="txArmed()"
+            [class.bg-slate-700]="!txArmed()"
+            [class.hover:bg-slate-600]="!txArmed()"
+            (click)="toggleTxArm()">
+            {{ txArmed() ? 'TX Armed' : 'Arm TX' }}
+          </button>
+
+          <button
+            type="button"
+            class="rounded-lg px-6 py-4 text-lg font-bold transition disabled:cursor-not-allowed disabled:opacity-40"
+            [disabled]="!txArmed()"
+            [class.bg-red-600]="status()?.ptt"
+            [class.hover:bg-red-500]="status()?.ptt"
+            [class.bg-slate-700]="!status()?.ptt"
+            [class.hover:bg-slate-600]="!status()?.ptt"
+            (click)="togglePtt()">
+            {{ status()?.ptt ? 'TX' : 'RX' }}
+          </button>
+        </div>
       </div>
 
       <div class="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">

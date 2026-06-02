@@ -1,7 +1,7 @@
 import json
 
 from alpha_fox.config import get_settings
-from alpha_fox.radio.service import radio_service
+from alpha_fox.radio.service import radio_manager
 
 
 def main() -> None:
@@ -11,7 +11,7 @@ def main() -> None:
     print(json.dumps(settings.model_dump(), indent=2))
 
     print("\nCurrent radio status:")
-    print(json.dumps(radio_service.get_status().model_dump(), indent=2))
+    print(json.dumps(radio_manager.radio.get_status().model_dump(), indent=2))
 
 
 if __name__ == "__main__":

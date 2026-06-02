@@ -31,6 +31,8 @@ export class Dashboard implements OnInit {
   readonly bandCheck = signal<BandCheckResult | null>(null);
   readonly bandWarning = signal<string | null>(null);
 
+  readonly txArmed = signal(false);
+
   readonly status = computed(() => this.radioWs.status());
   readonly latestWaterfallFrame = computed(() => this.waterfallWs.latestFrame());
 
@@ -70,6 +72,14 @@ export class Dashboard implements OnInit {
       this.frequencyInput.set(formatFrequencyInput(radioStatus.frequency_hz));
       this.radioWs.status.set(radioStatus);
     });
+  }
+
+  toggleTxArm(): void {
+    this.txArmed.update((armed) => !armed);
+  }
+
+  disarmTx(): void {
+    this.txArmed.set(false);
   }
 
   formatFrequency(frequencyHz: number | undefined | null): string {
@@ -192,6 +202,11 @@ export class Dashboard implements OnInit {
   }
 
   togglePtt(): void {
+    if (!this.txArmed()) {
+      this.commandError.set('TX is not armed. Click Arm TX before using PTT.');
+      return;
+    }
+
     const current = this.status();
 
     if (!current) {
@@ -203,6 +218,10 @@ export class Dashboard implements OnInit {
     this.radioApi.setPtt(!current.ptt).subscribe({
       next: (radioStatus) => {
         this.radioWs.status.set(radioStatus);
+
+        if (!radioStatus.ptt) {
+          this.disarmTx();
+        }
       },
       error: (error) => {
         this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
@@ -216,6 +235,7 @@ export class Dashboard implements OnInit {
 
     console.log('Backend dropdown changed:', backend);
 
+    this.backendError.set(null);
     this.commandError.set(null);
     this.setBackend(backend);
   }
@@ -230,7 +250,28 @@ export class Dashboard implements OnInit {
 
     this.backendError.set(null);
     this.commandError.set(null);
+    this.disarmTx();
 
+    const current = this.status();
+
+    if (current?.ptt) {
+      this.radioApi.setPtt(false).subscribe({
+        next: (radioStatus) => {
+          this.radioWs.status.set(radioStatus);
+          this.performBackendSwitch(backend);
+        },
+        error: (error) => {
+          this.commandError.set(error.error?.detail ?? 'Failed to release PTT before switching backend.');
+        },
+      });
+
+      return;
+    }
+
+    this.performBackendSwitch(backend);
+  }
+
+    private performBackendSwitch(backend: RadioBackend): void {
     this.radioApi.setBackend(backend).subscribe({
       next: (info) => {
         console.log('Backend switched:', info);
@@ -257,6 +298,8 @@ export class Dashboard implements OnInit {
       },
       error: (error) => {
         console.error('Backend switch failed:', error);
+
+        // Usually this should not happen now unless the backend refuses for another reason.
         this.backendError.set(error.error?.detail ?? 'Failed to switch radio backend.');
       },
     });
