@@ -58,7 +58,10 @@ def get_radio_status() -> RadioStatus:
 
 @router.post("/frequency", response_model=RadioStatus)
 def set_frequency(request: FrequencyRequest) -> RadioStatus:
-    return radio_manager.radio.set_frequency(request.frequency_hz)
+    try:
+        return radio_manager.radio.set_frequency(request.frequency_hz)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/mode", response_model=RadioStatus)
@@ -68,4 +71,7 @@ def set_mode(request: ModeRequest) -> RadioStatus:
 
 @router.post("/ptt", response_model=RadioStatus)
 def set_ptt(request: PttRequest) -> RadioStatus:
-    return radio_manager.radio.set_ptt(request.enabled)
+    try:
+        return radio_manager.radio.set_ptt(request.enabled)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -6,7 +6,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 
-RadioBackend = Literal["mock", "hamlib"]
+RadioBackend = Literal["mock", "sim", "hamlib"]
 
 
 class HamlibSettings(BaseModel):

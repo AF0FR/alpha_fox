@@ -14,7 +14,7 @@ export interface RadioStatus {
 }
 
 
-export type RadioBackend = 'mock' | 'hamlib';
+export type RadioBackend = 'mock' | 'sim' | 'hamlib';
 
 export interface RadioBackendInfo {
   active_backend: RadioBackend;

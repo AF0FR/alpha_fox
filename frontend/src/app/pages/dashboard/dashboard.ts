@@ -38,6 +38,7 @@ export class Dashboard implements OnInit {
   readonly activeBackend = signal<RadioBackend>('mock');
   readonly availableBackends = signal<RadioBackend[]>([]);
   readonly backendError = signal<string | null>(null);
+  readonly commandError = signal<string | null>(null);
 
   ngOnInit(): void {
     console.log('Dashboard ngOnInit running');
@@ -77,16 +78,37 @@ export class Dashboard implements OnInit {
   }
 
   tuneToFrequency(frequencyHz: number): void {
-    this.frequencyInput.set(Math.round(frequencyHz).toString());
+    this.commandError.set(null);
 
-    this.radioApi.setFrequency(Math.round(frequencyHz)).subscribe((status) => {
-      this.radioWs.status.set(status);
+    const roundedFrequency = Math.round(frequencyHz);
+
+    this.radioApi.setFrequency(roundedFrequency).subscribe({
+      next: (status) => {
+        this.frequencyInput.set(status.frequency_hz.toString());
+        this.radioWs.status.set(status);
+      },
+      error: (error) => {
+        const current = this.status();
+
+        if (current) {
+          this.frequencyInput.set(current.frequency_hz.toString());
+        }
+
+        this.commandError.set(error.error?.detail ?? 'Failed to set frequency.');
+      },
     });
   }
 
   setMode(mode: RadioMode): void {
-    this.radioApi.setMode(mode).subscribe((status) => {
-      this.radioWs.status.set(status);
+    this.commandError.set(null);
+
+    this.radioApi.setMode(mode).subscribe({
+      next: (status) => {
+        this.radioWs.status.set(status);
+      },
+      error: (error) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to set mode.');
+      },
     });
   }
 
@@ -109,8 +131,15 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    this.radioApi.setPtt(!current.ptt).subscribe((status) => {
-      this.radioWs.status.set(status);
+    this.commandError.set(null);
+
+    this.radioApi.setPtt(!current.ptt).subscribe({
+      next: (status) => {
+        this.radioWs.status.set(status);
+      },
+      error: (error) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
+      },
     });
   }
 
@@ -120,6 +149,7 @@ export class Dashboard implements OnInit {
 
     console.log('Backend dropdown changed:', backend);
 
+    this.commandError.set(null);
     this.setBackend(backend);
   }
 
@@ -132,6 +162,7 @@ export class Dashboard implements OnInit {
     }
 
     this.backendError.set(null);
+    this.commandError.set(null);
 
     this.radioApi.setBackend(backend).subscribe({
       next: (info) => {
@@ -143,9 +174,14 @@ export class Dashboard implements OnInit {
         this.radioWs.reconnect();
         this.waterfallWs.reconnect();
 
-        this.radioApi.getStatus().subscribe((status) => {
-          this.frequencyInput.set(status.frequency_hz.toString());
-          this.radioWs.status.set(status);
+        this.radioApi.getStatus().subscribe({
+          next: (status) => {
+            this.frequencyInput.set(status.frequency_hz.toString());
+            this.radioWs.status.set(status);
+          },
+          error: (error) => {
+            this.commandError.set(error.error?.detail ?? 'Failed to refresh radio status.');
+          },
         });
       },
       error: (error) => {

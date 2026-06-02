@@ -34,10 +34,15 @@
   </header>
 
   @if (backendError()) {
-  <div class="mx-6 mt-4 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
-    {{ backendError() }}
-  </div>
-}
+    <div class="mx-6 mt-4 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
+      {{ backendError() }}
+    </div>
+  }
+  @if (commandError()) {
+    <div class="mx-6 mt-4 rounded-lg border border-yellow-800 bg-yellow-950 px-4 py-3 text-yellow-200">
+      {{ commandError() }}
+    </div>
+  }
 
   <main class="grid gap-4 p-6 lg:grid-cols-[2fr_1fr]">
     <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">

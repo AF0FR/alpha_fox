@@ -3,6 +3,7 @@ from alpha_fox.radio.base import Radio
 from alpha_fox.radio.hamlib_radio import HamlibConnectionSettings, HamlibRadio
 from alpha_fox.radio.mock_radio import MockRadio
 from alpha_fox.radio.models import RadioBackend
+from alpha_fox.radio.sim_radio import SimRadio
 
 
 class RadioServiceManager:
@@ -17,7 +18,7 @@ class RadioServiceManager:
 
     @property
     def available_backends(self) -> list[RadioBackend]:
-        return ["mock", "hamlib"]
+        return ["mock", "sim", "hamlib"]
 
     @property
     def radio(self) -> Radio:
@@ -30,7 +31,9 @@ class RadioServiceManager:
         if backend == self._active_backend:
             return self._radio
 
-        if self._active_backend == "mock":
+        # Avoid blocking on disconnected Hamlib when switching away.
+        # Still protect against switching while the current fast/local backend is keyed.
+        if self._active_backend in {"mock", "sim"}:
             current_status = self._radio.get_status()
 
             if current_status.ptt:
@@ -51,6 +54,9 @@ class RadioServiceManager:
                     timeout_seconds=0.25,
                 ),
             )
+
+        if backend == "sim":
+            return SimRadio()
 
         return MockRadio()
 
