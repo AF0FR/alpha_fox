@@ -4,7 +4,10 @@ import {
   ElementRef,
   effect,
   inject,
+  input,
   OnDestroy,
+  output,
+  signal,
   viewChild,
 } from '@angular/core';
 
@@ -19,16 +22,23 @@ import { WaterfallFrame } from '../../core/models/waterfall-frame.model';
 export class WaterfallView implements AfterViewInit, OnDestroy {
   private readonly waterfallWs = inject(WaterfallWsService);
 
+  readonly centerFrequencyHz = input<number | null>(null);
+  readonly sampleRateHz = input<number | null>(null);
+
+  readonly tuneRequested = output<number>();
+
   readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
 
+  readonly paused = signal(false);
+  readonly hoverFrequencyHz = signal<number | null>(null);
+
   private context: CanvasRenderingContext2D | null = null;
-  private imageData: ImageData | null = null;
 
   constructor() {
     effect(() => {
       const frame = this.waterfallWs.latestFrame();
 
-      if (frame) {
+      if (frame && !this.paused()) {
         this.drawFrame(frame);
       }
     });
@@ -46,6 +56,91 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.resizeCanvas);
   }
 
+  togglePause(): void {
+    this.paused.update((current) => !current);
+  }
+
+  clear(): void {
+    const canvas = this.canvas().nativeElement;
+
+    if (!this.context) {
+      return;
+    }
+
+    this.context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  onMouseMove(event: MouseEvent): void {
+    const frequencyHz = this.frequencyFromMouseEvent(event);
+    this.hoverFrequencyHz.set(frequencyHz);
+  }
+
+  onMouseLeave(): void {
+    this.hoverFrequencyHz.set(null);
+  }
+
+  onCanvasClick(event: MouseEvent): void {
+    const frequencyHz = this.frequencyFromMouseEvent(event);
+
+    if (frequencyHz <= 0) {
+      return;
+    }
+
+    this.tuneRequested.emit(Math.round(frequencyHz));
+  }
+
+  formatFrequency(frequencyHz: number | null): string {
+    if (!frequencyHz) {
+      return '--.---.---';
+    }
+
+    return (frequencyHz / 1_000_000).toFixed(6);
+  }
+
+  get leftFrequencyHz(): number | null {
+    const center = this.centerFrequencyHz();
+    const span = this.sampleRateHz();
+
+    if (!center || !span) {
+      return null;
+    }
+
+    return center - span / 2;
+  }
+
+  get rightFrequencyHz(): number | null {
+    const center = this.centerFrequencyHz();
+    const span = this.sampleRateHz();
+
+    if (!center || !span) {
+      return null;
+    }
+
+    return center + span / 2;
+  }
+
+  get quarterFrequencyHz(): number | null {
+    const left = this.leftFrequencyHz;
+    const span = this.sampleRateHz();
+
+    if (!left || !span) {
+      return null;
+    }
+
+    return left + span * 0.25;
+  }
+
+  get threeQuarterFrequencyHz(): number | null {
+    const left = this.leftFrequencyHz;
+    const span = this.sampleRateHz();
+
+    if (!left || !span) {
+      return null;
+    }
+
+    return left + span * 0.75;
+  }
+
   private readonly resizeCanvas = (): void => {
     const canvas = this.canvas().nativeElement;
     const parent = canvas.parentElement;
@@ -58,8 +153,25 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     canvas.height = 280;
 
     this.context = canvas.getContext('2d', { willReadFrequently: true });
-    this.imageData = this.context?.createImageData(canvas.width, canvas.height) ?? null;
   };
+
+  private frequencyFromMouseEvent(event: MouseEvent): number {
+    const canvas = this.canvas().nativeElement;
+    const rect = canvas.getBoundingClientRect();
+
+    const center = this.centerFrequencyHz();
+    const span = this.sampleRateHz();
+
+    if (!center || !span || rect.width <= 0) {
+      return 0;
+    }
+
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const ratio = x / rect.width;
+    const offsetHz = ratio * span - span / 2;
+
+    return center + offsetHz;
+  }
 
   private drawFrame(frame: WaterfallFrame): void {
     const canvas = this.canvas().nativeElement;

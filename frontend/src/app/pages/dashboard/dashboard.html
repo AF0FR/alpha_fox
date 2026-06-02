@@ -130,6 +130,10 @@
         <div>
           <p class="text-sm uppercase tracking-widest text-slate-500">Waterfall</p>
           <h2 class="text-xl font-semibold">Mock FFT Stream</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Center {{ formatFrequency(latestWaterfallFrame()?.center_frequency_hz) }} MHz ·
+            Span {{ latestWaterfallFrame()?.sample_rate_hz ?? '-' }} Hz
+          </p>
         </div>
 
         <div class="rounded-full px-3 py-1 text-sm"
@@ -141,7 +145,10 @@
         </div>
       </div>
 
-      <app-waterfall-view />
+      <app-waterfall-view
+        [centerFrequencyHz]="latestWaterfallFrame()?.center_frequency_hz ?? null"
+        [sampleRateHz]="latestWaterfallFrame()?.sample_rate_hz ?? null"
+        (tuneRequested)="tuneToFrequency($event)" />
     </section>
   </main>
 </div>

@@ -21,6 +21,7 @@ export class Dashboard implements OnInit {
   readonly frequencyInput = signal('14074000');
 
   readonly status = computed(() => this.radioWs.status());
+  readonly latestWaterfallFrame = computed(() => this.waterfallWs.latestFrame());
 
   readonly modes: RadioMode[] = ['LSB', 'USB', 'AM', 'CW', 'CWR', 'NFM'];
 
@@ -44,7 +45,7 @@ export class Dashboard implements OnInit {
     });
   }
 
-  formatFrequency(frequencyHz: number | undefined): string {
+  formatFrequency(frequencyHz: number | undefined | null): string {
     if (!frequencyHz) {
       return '--.---.---';
     }
@@ -59,7 +60,13 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    this.radioApi.setFrequency(frequencyHz).subscribe((status) => {
+    this.tuneToFrequency(frequencyHz);
+  }
+
+  tuneToFrequency(frequencyHz: number): void {
+    this.frequencyInput.set(Math.round(frequencyHz).toString());
+
+    this.radioApi.setFrequency(Math.round(frequencyHz)).subscribe((status) => {
       this.radioWs.status.set(status);
     });
   }

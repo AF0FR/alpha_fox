@@ -1,6 +1,47 @@
-<div class="overflow-hidden rounded-lg border border-slate-800 bg-black">
-  <canvas
-    #canvas
-    class="block h-[280px] w-full">
-  </canvas>
+<div class="space-y-2">
+  <div class="grid grid-cols-5 gap-2 font-mono text-xs text-slate-400">
+    <div class="text-left">{{ formatFrequency(leftFrequencyHz) }}</div>
+    <div class="text-center">{{ formatFrequency(quarterFrequencyHz) }}</div>
+    <div class="text-center text-orange-300">
+      {{ formatFrequency(centerFrequencyHz()) }}
+    </div>
+    <div class="text-center">{{ formatFrequency(threeQuarterFrequencyHz) }}</div>
+    <div class="text-right">{{ formatFrequency(rightFrequencyHz) }}</div>
+  </div>
+
+  <div class="flex items-center justify-between text-sm text-slate-400">
+    <div>
+      @if (hoverFrequencyHz()) {
+        Hover: <span class="font-mono text-slate-200">{{ formatFrequency(hoverFrequencyHz()) }} MHz</span>
+      } @else {
+        Click waterfall to tune mock radio
+      }
+    </div>
+
+    <div class="flex gap-2">
+      <button
+        type="button"
+        class="rounded bg-slate-800 px-3 py-1 font-semibold text-slate-100 hover:bg-slate-700"
+        (click)="togglePause()">
+        {{ paused() ? 'Resume' : 'Pause' }}
+      </button>
+
+      <button
+        type="button"
+        class="rounded bg-slate-800 px-3 py-1 font-semibold text-slate-100 hover:bg-slate-700"
+        (click)="clear()">
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <div class="overflow-hidden rounded-lg border border-slate-800 bg-black">
+    <canvas
+      #canvas
+      class="block h-[280px] w-full cursor-crosshair"
+      (mousemove)="onMouseMove($event)"
+      (mouseleave)="onMouseLeave()"
+      (click)="onCanvasClick($event)">
+    </canvas>
+  </div>
 </div>
