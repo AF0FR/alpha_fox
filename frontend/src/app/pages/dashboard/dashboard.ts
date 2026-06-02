@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RadioApiService } from '../../core/services/radio-api.service';
 import { RadioStatusWsService } from '../../core/services/radio-status-ws.service';
 import { WaterfallWsService } from '../../core/services/waterfall-ws.service';
-import { RadioMode } from '../../core/models/radio-status.model';
+import { RadioBackend, RadioMode } from '../../core/models/radio-status.model';
 import { WaterfallView } from '../../waterfall/waterfall-view/waterfall-view';
 
 @Component({
@@ -35,11 +35,24 @@ export class Dashboard implements OnInit {
     { label: '10m FT8', frequencyHz: 28074000, mode: 'USB' as RadioMode },
   ];
 
+  readonly activeBackend = signal<RadioBackend>('mock');
+  readonly availableBackends = signal<RadioBackend[]>([]);
+  readonly backendError = signal<string | null>(null);
+
   ngOnInit(): void {
+    console.log('Dashboard ngOnInit running');
+
     this.radioWs.connect();
     this.waterfallWs.connect();
 
+    this.radioApi.getBackend().subscribe((info) => {
+      console.log('Backend info:', info);
+      this.activeBackend.set(info.active_backend);
+      this.availableBackends.set(info.available_backends);
+    });
+
     this.radioApi.getStatus().subscribe((status) => {
+      console.log('Radio status:', status);
       this.frequencyInput.set(status.frequency_hz.toString());
       this.radioWs.status.set(status);
     });
@@ -98,6 +111,47 @@ export class Dashboard implements OnInit {
 
     this.radioApi.setPtt(!current.ptt).subscribe((status) => {
       this.radioWs.status.set(status);
+    });
+  }
+
+  onBackendChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const backend = select.value as RadioBackend;
+
+    console.log('Backend dropdown changed:', backend);
+
+    this.setBackend(backend);
+  }
+
+  setBackend(backend: RadioBackend): void {
+    console.log('setBackend called:', backend);
+
+    if (backend === this.activeBackend()) {
+      console.log('Backend already active, skipping:', backend);
+      return;
+    }
+
+    this.backendError.set(null);
+
+    this.radioApi.setBackend(backend).subscribe({
+      next: (info) => {
+        console.log('Backend switched:', info);
+
+        this.activeBackend.set(info.active_backend);
+        this.availableBackends.set(info.available_backends);
+
+        this.radioWs.reconnect();
+        this.waterfallWs.reconnect();
+
+        this.radioApi.getStatus().subscribe((status) => {
+          this.frequencyInput.set(status.frequency_hz.toString());
+          this.radioWs.status.set(status);
+        });
+      },
+      error: (error) => {
+        console.error('Backend switch failed:', error);
+        this.backendError.set(error.error?.detail ?? 'Failed to switch radio backend.');
+      },
     });
   }
 }

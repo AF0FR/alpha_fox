@@ -2,7 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { API_URL } from '../tokens/api-url.token';
-import { RadioMode, RadioStatus } from '../models/radio-status.model';
+import {
+  RadioBackend,
+  RadioBackendInfo,
+  RadioMode,
+  RadioStatus,
+} from '../models/radio-status.model';
 
 @Injectable({
   providedIn: 'root',
@@ -30,6 +35,16 @@ export class RadioApiService {
   setPtt(enabled: boolean) {
     return this.http.post<RadioStatus>(`${this.apiUrl}/radio/ptt`, {
       enabled,
+    });
+  }
+
+  getBackend() {
+    return this.http.get<RadioBackendInfo>(`${this.apiUrl}/radio/backend`);
+  }
+
+  setBackend(backend: RadioBackend) {
+    return this.http.post<RadioBackendInfo>(`${this.apiUrl}/radio/backend`, {
+      backend,
     });
   }
 }

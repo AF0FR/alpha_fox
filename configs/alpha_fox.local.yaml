@@ -1,0 +1,6 @@
+radio:
+  backend: mock
+  name: Mock Radio
+  hamlib:
+    host: 127.0.0.1
+    port: 4532

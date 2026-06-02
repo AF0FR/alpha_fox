@@ -6,15 +6,38 @@
         <p class="text-sm text-slate-400">web rig control and waterfall dashboard</p>
       </div>
 
-      <div class="rounded-full px-3 py-1 text-sm"
-           [class.bg-green-900]="radioWs.connected()"
-           [class.text-green-200]="radioWs.connected()"
-           [class.bg-red-900]="!radioWs.connected()"
-           [class.text-red-200]="!radioWs.connected()">
-        {{ radioWs.connected() ? 'WebSocket Connected' : 'Disconnected' }}
+      <div class="flex items-center gap-3">
+        <label class="text-sm text-slate-400">
+          Radio Backend
+        </label>
+
+        <select
+          class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+          [value]="activeBackend()"
+          (change)="onBackendChange($event)">
+          @for (backend of availableBackends(); track backend) {
+            <option [value]="backend">
+              {{ backend }}
+            </option>
+          }
+        </select>
+
+        <div class="rounded-full px-3 py-1 text-sm"
+             [class.bg-green-900]="radioWs.connected()"
+             [class.text-green-200]="radioWs.connected()"
+             [class.bg-red-900]="!radioWs.connected()"
+             [class.text-red-200]="!radioWs.connected()">
+          {{ radioWs.connected() ? 'WebSocket Connected' : 'Disconnected' }}
+        </div>
       </div>
     </div>
   </header>
+
+  @if (backendError()) {
+  <div class="mx-6 mt-4 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
+    {{ backendError() }}
+  </div>
+}
 
   <main class="grid gap-4 p-6 lg:grid-cols-[2fr_1fr]">
     <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
@@ -31,6 +54,18 @@
 
           <div class="mt-2 text-slate-400">
             VFO {{ status()?.vfo ?? '-' }} | {{ status()?.mode ?? '-' }}
+          </div>
+
+          <div class="mt-2 flex items-center gap-2 text-sm">
+            <span
+              class="h-2.5 w-2.5 rounded-full"
+              [class.bg-green-500]="status()?.connected"
+              [class.bg-red-500]="!status()?.connected">
+            </span>
+
+            <span class="text-slate-400">
+              Radio {{ status()?.connected ? 'Connected' : 'Disconnected' }}
+            </span>
           </div>
         </div>
 

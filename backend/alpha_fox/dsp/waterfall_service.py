@@ -3,7 +3,7 @@ import random
 import time
 
 from alpha_fox.dsp.waterfall_frame import WaterfallFrame
-from alpha_fox.radio.service import radio_service
+from alpha_fox.radio.service import radio_manager
 
 
 class MockWaterfallService:
@@ -12,7 +12,7 @@ class MockWaterfallService:
         self._start_time = time.monotonic()
 
     def get_frame(self) -> WaterfallFrame:
-        status = radio_service.get_status()
+        status = radio_manager.radio.get_status()
         elapsed = time.monotonic() - self._start_time
 
         bins: list[float] = []

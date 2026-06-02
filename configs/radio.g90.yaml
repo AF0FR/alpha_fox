@@ -1,0 +1,6 @@
+radio:
+  backend: hamlib
+  name: Xiegu G90
+  hamlib:
+    host: 127.0.0.1
+    port: 4532

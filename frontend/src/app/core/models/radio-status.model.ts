@@ -12,3 +12,11 @@ export interface RadioStatus {
   alc: number | null;
   voltage: number | null;
 }
+
+
+export type RadioBackend = 'mock' | 'hamlib';
+
+export interface RadioBackendInfo {
+  active_backend: RadioBackend;
+  available_backends: RadioBackend[];
+}

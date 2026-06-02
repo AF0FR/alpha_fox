@@ -1,0 +1,3 @@
+radio:
+  backend: mock
+  name: Mock Radio

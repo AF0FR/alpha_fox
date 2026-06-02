@@ -2,6 +2,10 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from typing import Literal
+
+RadioBackend = Literal["mock", "hamlib"]
+
 
 class RadioMode(StrEnum):
     LSB = "LSB"
@@ -24,3 +28,8 @@ class RadioStatus(BaseModel):
     power_watts: float | None = 0.0
     alc: float | None = 0.0
     voltage: float | None = 13.8
+
+
+class RadioBackendInfo(BaseModel):
+    active_backend: RadioBackend
+    available_backends: list[RadioBackend]

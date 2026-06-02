@@ -1,7 +1,8 @@
+from alpha_fox.radio.base import Radio
 from alpha_fox.radio.models import RadioMode, RadioStatus
 
 
-class MockRadio:
+class MockRadio(Radio):
     def __init__(self) -> None:
         self._status = RadioStatus()
 
