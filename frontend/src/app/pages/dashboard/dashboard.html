@@ -1,0 +1,148 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <header class="border-b border-slate-800 bg-slate-900/80 px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-wide">alpha_fox</h1>
+        <p class="text-sm text-slate-400">web rig control and waterfall dashboard</p>
+      </div>
+
+      <div class="rounded-full px-3 py-1 text-sm"
+           [class.bg-green-900]="radioWs.connected()"
+           [class.text-green-200]="radioWs.connected()"
+           [class.bg-red-900]="!radioWs.connected()"
+           [class.text-red-200]="!radioWs.connected()">
+        {{ radioWs.connected() ? 'WebSocket Connected' : 'Disconnected' }}
+      </div>
+    </div>
+  </header>
+
+  <main class="grid gap-4 p-6 lg:grid-cols-[2fr_1fr]">
+    <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm uppercase tracking-widest text-slate-500">
+            {{ status()?.radio_name ?? 'No Radio' }}
+          </p>
+
+          <div class="mt-3 font-mono text-5xl font-bold text-orange-400">
+            {{ formatFrequency(status()?.frequency_hz) }}
+            <span class="text-xl text-slate-500">MHz</span>
+          </div>
+
+          <div class="mt-2 text-slate-400">
+            VFO {{ status()?.vfo ?? '-' }} | {{ status()?.mode ?? '-' }}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="rounded-lg px-6 py-4 text-lg font-bold transition"
+          [class.bg-red-600]="status()?.ptt"
+          [class.hover:bg-red-500]="status()?.ptt"
+          [class.bg-slate-700]="!status()?.ptt"
+          [class.hover:bg-slate-600]="!status()?.ptt"
+          (click)="togglePtt()">
+          {{ status()?.ptt ? 'TX' : 'RX' }}
+        </button>
+      </div>
+
+      <div class="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
+        <input
+          class="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-xl text-slate-100 outline-none focus:border-orange-500"
+          [ngModel]="frequencyInput()"
+          (ngModelChange)="frequencyInput.set($event)"
+          placeholder="14074000" />
+
+        <button
+          type="button"
+          class="rounded-lg bg-orange-600 px-6 py-3 font-semibold hover:bg-orange-500"
+          (click)="setFrequency()">
+          Set Frequency
+        </button>
+      </div>
+
+      <div class="mt-6">
+        <p class="mb-2 text-sm uppercase tracking-widest text-slate-500">Modes</p>
+
+        <div class="flex flex-wrap gap-2">
+          @for (mode of modes; track mode) {
+            <button
+              type="button"
+              class="rounded-lg px-4 py-2 font-semibold"
+              [class.bg-orange-600]="status()?.mode === mode"
+              [class.bg-slate-800]="status()?.mode !== mode"
+              [class.hover:bg-orange-500]="status()?.mode === mode"
+              [class.hover:bg-slate-700]="status()?.mode !== mode"
+              (click)="setMode(mode)">
+              {{ mode }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <p class="mb-2 text-sm uppercase tracking-widest text-slate-500">Band Presets</p>
+
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          @for (preset of bandPresets; track preset.label) {
+            <button
+              type="button"
+              class="rounded-lg bg-slate-800 px-4 py-3 text-left hover:bg-slate-700"
+              (click)="setPreset(preset.frequencyHz, preset.mode)">
+              <div class="font-semibold">{{ preset.label }}</div>
+              <div class="font-mono text-sm text-slate-400">
+                {{ formatFrequency(preset.frequencyHz) }} MHz
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+    </section>
+
+    <aside class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+      <p class="mb-4 text-sm uppercase tracking-widest text-slate-500">Meters</p>
+
+      <div class="grid gap-3">
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">SWR</div>
+          <div class="text-2xl font-bold">{{ status()?.swr ?? '-' }}</div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Power</div>
+          <div class="text-2xl font-bold">{{ status()?.power_watts ?? '-' }} W</div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">ALC</div>
+          <div class="text-2xl font-bold">{{ status()?.alc ?? '-' }}</div>
+        </div>
+
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">Voltage</div>
+          <div class="text-2xl font-bold">{{ status()?.voltage ?? '-' }} V</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg lg:col-span-2">
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm uppercase tracking-widest text-slate-500">Waterfall</p>
+          <h2 class="text-xl font-semibold">Placeholder</h2>
+        </div>
+
+        <div class="text-sm text-slate-500">
+          I/Q stream not connected yet
+        </div>
+      </div>
+
+      <div class="flex h-72 items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-950">
+        <div class="text-center text-slate-500">
+          <div class="text-lg font-semibold">Waterfall canvas goes here</div>
+          <div class="mt-1 text-sm">Next milestone: FFT frames over WebSocket</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

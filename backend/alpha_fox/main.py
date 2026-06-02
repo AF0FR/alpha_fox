@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from alpha_fox.api.routes.radio import router as radio_router
 from alpha_fox.api.websocket.radio_status_ws import router as radio_status_ws_router
@@ -7,6 +8,17 @@ app = FastAPI(
     title="alpha_fox",
     description="Web-based rig control and waterfall dashboard.",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
