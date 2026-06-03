@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from typing import Any
 
 from alpha_fox.radio.models import (
     RadioBackend,
     RadioBackendInfo,
     RadioMode,
-    RadioStatus,
+    RadioStatus, RadioConnectionTestResult,
 )
 from alpha_fox.radio.service import radio_manager
 from alpha_fox.station.band_edges import BandCheckResult, check_band_edges
@@ -190,3 +191,49 @@ def disarm_tx() -> TxSafetyStatus:
         radio_manager.radio.set_ptt(False)
 
     return tx_safety_manager.disarm()
+
+
+@router.get("/connection-test", response_model=RadioConnectionTestResult)
+def test_radio_connection() -> RadioConnectionTestResult:
+    errors: list[str] = []
+    levels: dict[str, Any] = {}
+
+    try:
+        status = radio_manager.radio.get_status()
+    except Exception as exc:
+        return RadioConnectionTestResult(
+            connected=False,
+            backend=radio_manager.active_backend,
+            errors=[f"Status check failed: {exc}"],
+        )
+
+    if not status.connected:
+        return RadioConnectionTestResult(
+            connected=False,
+            backend=radio_manager.active_backend,
+            radio_name=status.radio_name,
+            frequency_hz=status.frequency_hz,
+            mode=status.mode,
+            ptt=status.ptt,
+            errors=["Radio backend is not connected."],
+        )
+
+    levels["s_meter_raw"] = status.s_meter_raw
+    levels["swr"] = status.swr
+    levels["alc"] = status.alc
+    levels["tx_power_level"] = status.tx_power_level
+    levels["af_gain"] = status.af_gain
+    levels["rf_gain"] = status.rf_gain
+    levels["mic_gain"] = status.mic_gain
+    levels["key_speed_wpm"] = status.key_speed_wpm
+
+    return RadioConnectionTestResult(
+        connected=True,
+        backend=radio_manager.active_backend,
+        radio_name=status.radio_name,
+        frequency_hz=status.frequency_hz,
+        mode=status.mode,
+        ptt=status.ptt,
+        levels=levels,
+        errors=errors,
+    )

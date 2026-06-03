@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from typing import Literal
+from typing import Literal, Any
 
 RadioBackend = Literal["mock", "sim", "hamlib"]
 
@@ -43,3 +43,14 @@ class RadioStatus(BaseModel):
 class RadioBackendInfo(BaseModel):
     active_backend: RadioBackend
     available_backends: list[RadioBackend]
+
+
+class RadioConnectionTestResult(BaseModel):
+    connected: bool
+    backend: RadioBackend
+    radio_name: str | None = None
+    frequency_hz: int | None = None
+    mode: RadioMode | None = None
+    ptt: bool | None = None
+    levels: dict[str, Any] = Field(default_factory=dict)
+    errors: list[str] = Field(default_factory=list)

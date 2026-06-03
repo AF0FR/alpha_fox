@@ -12,6 +12,18 @@ import {
 import { BandCheckResult } from '../models/band-check.model';
 
 
+export interface RadioConnectionTestResult {
+  connected: boolean;
+  backend: RadioBackend;
+  radio_name?: string | null;
+  frequency_hz?: number | null;
+  mode?: RadioMode | null;
+  ptt?: boolean | null;
+  levels: Record<string, unknown>;
+  errors: string[];
+}
+
+
 @Injectable({
   providedIn: 'root',
 })
@@ -87,5 +99,9 @@ export class RadioApiService {
     return this.http.post<RadioBackendInfo>(`${this.apiUrl}/radio/backend`, {
       backend,
     });
+  }
+
+  testConnection() {
+    return this.http.get<RadioConnectionTestResult>(`${this.apiUrl}/radio/connection-test`);
   }
 }

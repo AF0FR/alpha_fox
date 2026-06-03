@@ -91,7 +91,23 @@
     </section>
 
     <section class="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-lg lg:col-span-2">
-      <p class="text-sm uppercase tracking-widest text-slate-500">Hamlib</p>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm uppercase tracking-widest text-slate-500">Hamlib / Radio Connection Test</p>
+          <h2 class="mt-1 text-xl font-semibold">G90 CAT Check</h2>
+          <p class="mt-2 text-sm text-slate-500">
+            Tests the active radio backend by reading frequency, mode, PTT, and known meter/control levels.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="connectionTestRunning"
+          (click)="testRadioConnection()">
+          {{ connectionTestRunning ? 'Testing...' : 'Test Connection' }}
+        </button>
+      </div>
 
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div class="rounded-lg bg-slate-950 p-4">
@@ -106,8 +122,123 @@
       </div>
 
       <p class="mt-4 text-sm text-slate-500">
-        Editable Hamlib settings will come later. For now, these come from backend config.
+        For G90 testing, start rigctld first, then switch active backend to hamlib and run this test.
       </p>
+
+      <div class="mt-4 rounded-lg bg-slate-950 p-4">
+        <div class="font-mono text-sm text-slate-400">
+          rigctld -m 3088 -r COM5 -s 19200 -t 4532
+        </div>
+      </div>
+
+      @if (connectionTestError) {
+        <div class="mt-4 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
+          {{ connectionTestError }}
+        </div>
+      }
+
+      @if (connectionTestResult) {
+        <div
+          class="mt-4 rounded-lg border px-4 py-3"
+          [class.border-green-800]="connectionTestResult.connected"
+          [class.bg-green-950]="connectionTestResult.connected"
+          [class.text-green-200]="connectionTestResult.connected"
+          [class.border-red-800]="!connectionTestResult.connected"
+          [class.bg-red-950]="!connectionTestResult.connected"
+          [class.text-red-200]="!connectionTestResult.connected">
+          {{ connectionTestResult.connected ? 'Connection test passed.' : 'Connection test failed.' }}
+        </div>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-lg bg-slate-950 p-4">
+            <div class="text-sm text-slate-500">Backend</div>
+            <div class="text-xl font-bold">{{ connectionTestResult.backend }}</div>
+          </div>
+
+          <div class="rounded-lg bg-slate-950 p-4">
+            <div class="text-sm text-slate-500">Radio</div>
+            <div class="text-xl font-bold">{{ connectionTestResult.radio_name ?? '-' }}</div>
+          </div>
+
+          <div class="rounded-lg bg-slate-950 p-4">
+            <div class="text-sm text-slate-500">Frequency</div>
+            <div class="font-mono text-xl font-bold">
+              {{ formatFrequency(connectionTestResult.frequency_hz) }} MHz
+            </div>
+          </div>
+
+          <div class="rounded-lg bg-slate-950 p-4">
+            <div class="text-sm text-slate-500">Mode / PTT</div>
+            <div class="text-xl font-bold">
+              {{ connectionTestResult.mode ?? '-' }} /
+              {{ connectionTestResult.ptt ? 'TX' : 'RX' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-lg bg-slate-950 p-4">
+          <div class="mb-3 text-sm uppercase tracking-widest text-slate-500">
+            Read Levels
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">S-Meter Raw</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['s_meter_raw']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">SWR</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['swr']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">ALC</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['alc']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">TX Power Level</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['tx_power_level']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">AF Gain</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['af_gain']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">RF Gain</div>
+              <div class="font-mono text-lg">
+                {{ formatLevel(connectionTestResult.levels['rf_gain']) }}
+                <span class="text-xs text-yellow-400">experimental</span>
+              </div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">Mic Gain</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['mic_gain']) }}</div>
+            </div>
+
+            <div class="rounded bg-slate-900 p-3">
+              <div class="text-xs text-slate-500">Key Speed</div>
+              <div class="font-mono text-lg">{{ formatLevel(connectionTestResult.levels['key_speed_wpm']) }}</div>
+            </div>
+          </div>
+        </div>
+
+        @if (connectionTestResult.errors.length) {
+          <div class="mt-4 rounded-lg border border-yellow-800 bg-yellow-950 px-4 py-3 text-yellow-200">
+            <div class="mb-2 font-semibold">Warnings</div>
+
+            <ul class="list-inside list-disc text-sm">
+              @for (error of connectionTestResult.errors; track error) {
+                <li>{{ error }}</li>
+              }
+            </ul>
+          </div>
+        }
+      }
     </section>
   </main>
 </div>
