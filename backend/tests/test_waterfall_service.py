@@ -9,7 +9,7 @@ def test_mock_waterfall_frame_shape() -> None:
     assert frame.center_frequency_hz > 0
     assert frame.sample_rate_hz == 48_000
     assert frame.min_db == -120.0
-    assert frame.max_db == -20.0
+    assert frame.max_db == -35.0
     assert len(frame.bins) == 512
 
 

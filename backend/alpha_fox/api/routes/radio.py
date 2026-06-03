@@ -11,6 +11,10 @@ from alpha_fox.radio.service import radio_manager
 from alpha_fox.station.band_edges import BandCheckResult, check_band_edges
 from alpha_fox.radio.tx_safety import TxSafetyStatus, tx_safety_manager
 
+
+def _unsupported_to_http(exc: NotImplementedError) -> HTTPException:
+    return HTTPException(status_code=501, detail=str(exc))
+
 router = APIRouter(prefix="/radio", tags=["radio"])
 
 
@@ -28,6 +32,14 @@ class PttRequest(BaseModel):
 
 class BackendRequest(BaseModel):
     backend: RadioBackend
+
+
+class NormalizedLevelRequest(BaseModel):
+    value: float = Field(..., ge=0.0, le=1.0)
+
+
+class KeySpeedRequest(BaseModel):
+    wpm: float = Field(..., ge=5.0, le=60.0)
 
 
 @router.get("/backend", response_model=RadioBackendInfo)
@@ -67,11 +79,6 @@ def get_radio_status() -> RadioStatus:
 
 @router.post("/frequency", response_model=RadioStatus)
 def set_frequency(request: FrequencyRequest) -> RadioStatus:
-    band_check = check_band_edges(request.frequency_hz)
-
-    if not band_check.allowed:
-        raise HTTPException(status_code=400, detail=band_check.message)
-
     try:
         return radio_manager.radio.set_frequency(request.frequency_hz)
     except ValueError as exc:
@@ -95,6 +102,15 @@ def set_ptt(request: PttRequest) -> RadioStatus:
         if request.enabled:
             tx_safety_manager.require_armed()
 
+            current_status = radio_manager.radio.get_status()
+            band_check = check_band_edges(current_status.frequency_hz)
+
+            if not band_check.allowed:
+                tx_safety_manager.disarm()
+                raise RuntimeError(
+                    f"TX blocked: {band_check.message}"
+                )
+
         radio_status = radio_manager.radio.set_ptt(request.enabled)
 
         if not radio_status.ptt:
@@ -103,6 +119,56 @@ def set_ptt(request: PttRequest) -> RadioStatus:
         return radio_status
 
     except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/tx-power", response_model=RadioStatus)
+def set_tx_power(request: NormalizedLevelRequest) -> RadioStatus:
+    try:
+        return radio_manager.radio.set_tx_power_level(request.value)
+    except NotImplementedError as exc:
+        raise _unsupported_to_http(exc) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/af-gain", response_model=RadioStatus)
+def set_af_gain(request: NormalizedLevelRequest) -> RadioStatus:
+    try:
+        return radio_manager.radio.set_af_gain(request.value)
+    except NotImplementedError as exc:
+        raise _unsupported_to_http(exc) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/rf-gain", response_model=RadioStatus)
+def set_rf_gain(request: NormalizedLevelRequest) -> RadioStatus:
+    try:
+        return radio_manager.radio.set_rf_gain(request.value)
+    except NotImplementedError as exc:
+        raise _unsupported_to_http(exc) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/mic-gain", response_model=RadioStatus)
+def set_mic_gain(request: NormalizedLevelRequest) -> RadioStatus:
+    try:
+        return radio_manager.radio.set_mic_gain(request.value)
+    except NotImplementedError as exc:
+        raise _unsupported_to_http(exc) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/key-speed", response_model=RadioStatus)
+def set_key_speed(request: KeySpeedRequest) -> RadioStatus:
+    try:
+        return radio_manager.radio.set_key_speed(request.wpm)
+    except NotImplementedError as exc:
+        raise _unsupported_to_http(exc) from exc
+    except OSError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 

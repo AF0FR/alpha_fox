@@ -29,6 +29,16 @@ class RadioStatus(BaseModel):
     alc: float | None = 0.0
     voltage: float | None = 13.8
 
+    s_meter_raw: float | None = None
+
+    tx_power_level: float | None = None
+    af_gain: float | None = None
+    rf_gain: float | None = None
+    mic_gain: float | None = None
+    key_speed_wpm: float | None = None
+
+    rf_gain_experimental: bool = False
+
 
 class RadioBackendInfo(BaseModel):
     active_backend: RadioBackend

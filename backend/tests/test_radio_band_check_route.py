@@ -28,13 +28,13 @@ def test_radio_band_check_route_rejects_invalid_frequency() -> None:
     assert data["allowed"] is False
 
 
-def test_set_frequency_rejects_out_of_band_frequency() -> None:
+def test_set_frequency_allows_out_of_band_frequency_for_rx() -> None:
     client = TestClient(app)
 
     response = client.post(
         "/radio/frequency",
-        json={"frequency_hz": 70_000_000},
+        json={"frequency_hz": 27_185_000},
     )
 
-    assert response.status_code == 400
-    assert "outside supported amateur" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["frequency_hz"] == 27_185_000

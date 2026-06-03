@@ -39,6 +39,16 @@ class HamlibRadio(Radio):
             mode = self._get_mode()
             ptt = self._get_ptt()
 
+            swr = self._get_level_float("SWR")
+            alc = self._get_level_float("ALC")
+            s_meter_raw = self._get_level_float("RAWSTR")
+
+            tx_power_level = self._get_level_float("RFPOWER")
+            af_gain = self._get_level_float("AF")
+            rf_gain = self._get_level_float("RF")
+            mic_gain = self._get_level_float("MICGAIN")
+            key_speed_wpm = self._get_level_float("KEYSPD")
+
             self._last_status = RadioStatus(
                 connected=True,
                 radio_name=self.name,
@@ -46,10 +56,17 @@ class HamlibRadio(Radio):
                 mode=mode,
                 ptt=ptt,
                 vfo="A",
-                swr=None,
+                swr=swr,
                 power_watts=None,
-                alc=None,
+                alc=alc,
                 voltage=None,
+                s_meter_raw=s_meter_raw,
+                tx_power_level=tx_power_level,
+                af_gain=af_gain,
+                rf_gain=rf_gain,
+                mic_gain=mic_gain,
+                key_speed_wpm=key_speed_wpm,
+                rf_gain_experimental=True,
             )
 
         except OSError:
@@ -120,3 +137,39 @@ class HamlibRadio(Radio):
             raise OSError(f"Hamlib command failed: {command}: {response}")
 
         return response
+
+
+    def _get_level_float(self, level_name: str) -> float | None:
+        try:
+            response = self._send_command(f"l {level_name}")
+            return float(response.strip().splitlines()[0])
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def _set_level(self, level_name: str, value: float) -> None:
+        self._send_command(f"L {level_name} {value}")
+
+    @staticmethod
+    def _clamp_normalized(value: float) -> float:
+        return max(0.0, min(1.0, value))
+
+    def set_tx_power_level(self, value: float) -> RadioStatus:
+        self._set_level("RFPOWER", self._clamp_normalized(value))
+        return self.get_status()
+
+    def set_af_gain(self, value: float) -> RadioStatus:
+        self._set_level("AF", self._clamp_normalized(value))
+        return self.get_status()
+
+    def set_rf_gain(self, value: float) -> RadioStatus:
+        # Experimental for G90 until tested on real hardware.
+        self._set_level("RF", self._clamp_normalized(value))
+        return self.get_status()
+
+    def set_mic_gain(self, value: float) -> RadioStatus:
+        self._set_level("MICGAIN", self._clamp_normalized(value))
+        return self.get_status()
+
+    def set_key_speed(self, wpm: float) -> RadioStatus:
+        self._set_level("KEYSPD", max(5.0, min(60.0, wpm)))
+        return self.get_status()

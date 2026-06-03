@@ -133,12 +133,13 @@ export class Dashboard implements OnInit {
       next: (result) => {
         this.bandCheck.set(result);
 
-        if (!result.allowed) {
-          this.bandWarning.set(result.message);
-          return;
-        }
+      if (!result.allowed) {
+        this.bandWarning.set(`TX blocked: ${result.message}`);
+      } else {
+        this.bandWarning.set(null);
+      }
 
-        this.tuneToFrequency(roundedFrequency);
+      this.tuneToFrequency(roundedFrequency);
       },
       error: (error) => {
         this.commandError.set(error.error?.detail ?? 'Failed to validate frequency.');
@@ -192,8 +193,9 @@ export class Dashboard implements OnInit {
         this.bandCheck.set(bandCheck);
 
         if (!bandCheck.allowed) {
-          this.bandWarning.set(bandCheck.message);
-          return;
+          this.bandWarning.set(`RX only: ${bandCheck.message}`);
+        } else {
+          this.bandWarning.set(null);
         }
 
         this.radioApi.setFrequency(frequencyHz).subscribe({
@@ -252,6 +254,39 @@ export class Dashboard implements OnInit {
       error: (error) => {
         this.disarmTx();
         this.commandError.set(error.error?.detail ?? 'Failed to toggle PTT.');
+      },
+    });
+  }
+
+  setTxPowerLevel(value: string): void {
+    this.setRadioLevel(() => this.radioApi.setTxPowerLevel(Number(value)));
+  }
+
+  setAfGain(value: string): void {
+    this.setRadioLevel(() => this.radioApi.setAfGain(Number(value)));
+  }
+
+  setRfGain(value: string): void {
+    this.setRadioLevel(() => this.radioApi.setRfGain(Number(value)));
+  }
+
+  setMicGain(value: string): void {
+    this.setRadioLevel(() => this.radioApi.setMicGain(Number(value)));
+  }
+
+  setKeySpeed(value: string): void {
+    this.setRadioLevel(() => this.radioApi.setKeySpeed(Number(value)));
+  }
+
+  private setRadioLevel(request: () => any): void {
+    this.commandError.set(null);
+
+    request().subscribe({
+      next: (radioStatus: RadioStatus) => {
+        this.radioWs.status.set(radioStatus);
+      },
+      error: (error: any) => {
+        this.commandError.set(error.error?.detail ?? 'Failed to set radio control.');
       },
     });
   }

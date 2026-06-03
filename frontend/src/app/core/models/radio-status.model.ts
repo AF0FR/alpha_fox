@@ -11,6 +11,15 @@ export interface RadioStatus {
   power_watts: number | null;
   alc: number | null;
   voltage: number | null;
+  s_meter_raw?: number | null;
+
+  tx_power_level?: number | null;
+  af_gain?: number | null;
+  rf_gain?: number | null;
+  mic_gain?: number | null;
+  key_speed_wpm?: number | null;
+
+  rf_gain_experimental?: boolean;
 }
 
 

@@ -125,6 +125,101 @@
       </div>
 
       <div class="mt-6">
+        <p class="mb-2 text-sm uppercase tracking-widest text-slate-500">Radio Controls</p>
+
+        <div class="grid gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-2">
+          <label class="flex items-center gap-3 text-sm text-slate-400">
+            TX Power
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              class="w-full accent-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="!status()?.connected"
+              [value]="status()?.tx_power_level ?? 0"
+              (change)="setTxPowerLevel($any($event.target).value)" />
+            <span class="w-14 text-right font-mono text-slate-300">
+              {{ ((status()?.tx_power_level ?? 0) * 100).toFixed(0) }}%
+            </span>
+          </label>
+
+          <label class="flex items-center gap-3 text-sm text-slate-400">
+            AF Gain
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              class="w-full accent-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="!status()?.connected"
+              [value]="status()?.af_gain ?? 0"
+              (change)="setAfGain($any($event.target).value)" />
+            <span class="w-14 text-right font-mono text-slate-300">
+              {{ ((status()?.af_gain ?? 0) * 100).toFixed(0) }}%
+            </span>
+          </label>
+
+          <label class="flex items-center gap-3 text-sm text-slate-400">
+            RF Gain
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              class="w-full accent-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="!status()?.connected"
+              [value]="status()?.rf_gain ?? 0"
+              (change)="setRfGain($any($event.target).value)" />
+            <span class="w-24 text-right font-mono text-slate-300">
+              {{ ((status()?.rf_gain ?? 0) * 100).toFixed(0) }}%
+              @if (status()?.rf_gain_experimental) {
+                <span class="text-yellow-400">*</span>
+              }
+            </span>
+          </label>
+
+          <label class="flex items-center gap-3 text-sm text-slate-400">
+            Mic Gain
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              class="w-full accent-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="!status()?.connected"
+              [value]="status()?.mic_gain ?? 0"
+              (change)="setMicGain($any($event.target).value)" />
+            <span class="w-14 text-right font-mono text-slate-300">
+              {{ ((status()?.mic_gain ?? 0) * 100).toFixed(0) }}%
+            </span>
+          </label>
+
+          <label class="flex items-center gap-3 text-sm text-slate-400">
+            Key Speed
+            <input
+              type="range"
+              min="5"
+              max="60"
+              step="1"
+              class="w-full accent-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="!status()?.connected"
+              [value]="status()?.key_speed_wpm ?? 20"
+              (change)="setKeySpeed($any($event.target).value)" />
+            <span class="w-16 text-right font-mono text-slate-300">
+              {{ (status()?.key_speed_wpm ?? 20).toFixed(0) }} WPM
+            </span>
+          </label>
+        </div>
+
+        @if (status()?.rf_gain_experimental) {
+          <p class="mt-2 text-xs text-yellow-400">
+            * RF Gain is experimental until verified on the actual G90.
+          </p>
+        }
+      </div>
+
+      <div class="mt-6">
         <p class="mb-2 text-sm uppercase tracking-widest text-slate-500">Band Presets</p>
 
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -147,6 +242,11 @@
       <p class="mb-4 text-sm uppercase tracking-widest text-slate-500">Meters</p>
 
       <div class="grid gap-3">
+        <div class="rounded-lg bg-slate-950 p-4">
+          <div class="text-sm text-slate-500">S-Meter Raw</div>
+          <div class="text-2xl font-bold">{{ status()?.s_meter_raw ?? '-' }}</div>
+        </div>
+
         <div class="rounded-lg bg-slate-950 p-4">
           <div class="text-sm text-slate-500">SWR</div>
           <div class="text-2xl font-bold">{{ status()?.swr ?? '-' }}</div>
@@ -191,6 +291,7 @@
 
       <app-waterfall-view
         [centerFrequencyHz]="latestWaterfallFrame()?.center_frequency_hz ?? null"
+        [currentFrequencyHz]="status()?.frequency_hz ?? null"
         [sampleRateHz]="latestWaterfallFrame()?.sample_rate_hz ?? null"
         (tuneRequested)="validateAndTune($event)" />
     </section>

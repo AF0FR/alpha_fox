@@ -59,6 +59,26 @@ export class RadioApiService {
     });
   }
 
+  setTxPowerLevel(value: number) {
+    return this.http.post<RadioStatus>(`${this.apiUrl}/radio/tx-power`, { value });
+  }
+
+  setAfGain(value: number) {
+    return this.http.post<RadioStatus>(`${this.apiUrl}/radio/af-gain`, { value });
+  }
+
+  setRfGain(value: number) {
+    return this.http.post<RadioStatus>(`${this.apiUrl}/radio/rf-gain`, { value });
+  }
+
+  setMicGain(value: number) {
+    return this.http.post<RadioStatus>(`${this.apiUrl}/radio/mic-gain`, { value });
+  }
+
+  setKeySpeed(wpm: number) {
+    return this.http.post<RadioStatus>(`${this.apiUrl}/radio/key-speed`, { wpm });
+  }
+
   getBackend() {
     return this.http.get<RadioBackendInfo>(`${this.apiUrl}/radio/backend`);
   }

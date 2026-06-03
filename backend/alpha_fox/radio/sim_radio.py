@@ -117,3 +117,27 @@ class SimRadio(Radio):
     def _validate_can_transmit(self) -> None:
         if self._status.swr is not None and self._status.swr > 3.0:
             raise RuntimeError("Cannot transmit: simulated SWR is too high.")
+
+    def set_tx_power_level(self, value: float) -> RadioStatus:
+        self._status.tx_power_level = self._clamp_normalized(value)
+        return self.get_status()
+
+    def set_af_gain(self, value: float) -> RadioStatus:
+        self._status.af_gain = self._clamp_normalized(value)
+        return self.get_status()
+
+    def set_rf_gain(self, value: float) -> RadioStatus:
+        self._status.rf_gain = self._clamp_normalized(value)
+        return self.get_status()
+
+    def set_mic_gain(self, value: float) -> RadioStatus:
+        self._status.mic_gain = self._clamp_normalized(value)
+        return self.get_status()
+
+    def set_key_speed(self, wpm: float) -> RadioStatus:
+        self._status.key_speed_wpm = max(5.0, min(60.0, wpm))
+        return self.get_status()
+
+    @staticmethod
+    def _clamp_normalized(value: float) -> float:
+        return max(0.0, min(1.0, value))
