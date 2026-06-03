@@ -18,8 +18,8 @@
           @if (tick.labeled) {
             <div
               class="mt-2 whitespace-nowrap font-mono"
-              [class.text-xs]="tick.major"
-              [class.text-[10px]]="!tick.major"
+              [class.text-2xl]="tick.major"
+              [class.text-md]="!tick.major"
               [class.text-slate-300]="tick.major"
               [class.text-slate-500]="!tick.major">
               {{ formatTickFrequency(tick.frequencyHz) }}
@@ -116,64 +116,101 @@
         </select>
       </label>
 
-    <div class="flex items-center gap-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
       <label class="flex items-center gap-2 text-xs text-slate-400">
-        Display Gain
-        <input
-          type="range"
-          min="-24"
-          max="50"
-          step="1"
-          class="w-24 accent-orange-500"
-          [value]="heatmapGainDb()"
-          (input)="setHeatmapGainDb($any($event.target).value)" />
-        <span class="w-12 text-right font-mono text-slate-300">
-          {{ heatmapGainDb() }} dB
-        </span>
+        Action
+        <select
+          class="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none"
+          [value]="tuneInteractionMode()"
+          (change)="setTuneInteractionMode($any($event.target).value)">
+          <option value="tune">Click tunes</option>
+          <option value="center">Click centers</option>
+        </select>
       </label>
 
       <label class="flex items-center gap-2 text-xs text-slate-400">
-        Contrast
         <input
-          type="range"
-          min="0.8"
-          max="4"
-          step="0.1"
-          class="w-24 accent-orange-500"
-          [value]="heatmapContrast()"
-          (input)="setHeatmapContrast($any($event.target).value)" />
-        <span class="w-10 text-right font-mono text-slate-300">
-          {{ heatmapContrast().toFixed(1) }}
-        </span>
+          type="checkbox"
+          class="accent-orange-500"
+          [checked]="showWaterfallGrid()"
+          (change)="setShowWaterfallGrid($any($event.target).checked)" />
+        Grid
       </label>
 
       <label class="flex items-center gap-2 text-xs text-slate-400">
-        Floor
         <input
-          type="range"
-          min="-24"
-          max="24"
-          step="1"
-          class="w-24 accent-orange-500"
-          [value]="heatmapFloorOffsetDb()"
-          (input)="setHeatmapFloorOffsetDb($any($event.target).value)" />
-        <span class="w-12 text-right font-mono text-slate-300">
-          {{ heatmapFloorOffsetDb() }} dB
-        </span>
+          type="checkbox"
+          class="accent-orange-500"
+          [checked]="showBandwidthMarker()"
+          (change)="setShowBandwidthMarker($any($event.target).checked)" />
+        BW
       </label>
-    </div>
 
-    <label class="flex items-center gap-2 text-xs text-slate-400">
-      Palette
-      <select
-        class="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none"
-        [value]="heatmapPalette()"
-        (change)="setHeatmapPalette($any($event.target).value)">
-        <option value="classic">Classic</option>
-        <option value="cool">Cool</option>
-        <option value="hot">Hot</option>
-      </select>
-    </label>
+      <div class="flex items-center gap-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+        <label class="flex items-center gap-2 text-xs text-slate-400">
+          Display Gain
+          <input
+            type="range"
+            min="-24"
+            max="50"
+            step="1"
+            class="w-24 accent-orange-500"
+            [value]="heatmapGainDb()"
+            (input)="setHeatmapGainDb($any($event.target).value)" />
+          <span class="w-12 text-right font-mono text-slate-300">
+            {{ heatmapGainDb() }} dB
+          </span>
+        </label>
+
+        <label class="flex items-center gap-2 text-xs text-slate-400">
+          Contrast
+          <input
+            type="range"
+            min="0.8"
+            max="4"
+            step="0.1"
+            class="w-24 accent-orange-500"
+            [value]="heatmapContrast()"
+            (input)="setHeatmapContrast($any($event.target).value)" />
+          <span class="w-10 text-right font-mono text-slate-300">
+            {{ heatmapContrast().toFixed(1) }}
+          </span>
+        </label>
+
+        <label class="flex items-center gap-2 text-xs text-slate-400">
+          Floor
+          <input
+            type="range"
+            min="-24"
+            max="24"
+            step="1"
+            class="w-24 accent-orange-500"
+            [value]="heatmapFloorOffsetDb()"
+            (input)="setHeatmapFloorOffsetDb($any($event.target).value)" />
+          <span class="w-12 text-right font-mono text-slate-300">
+            {{ heatmapFloorOffsetDb() }} dB
+          </span>
+        </label>
+      </div>
+
+      <label class="flex items-center gap-2 text-xs text-slate-400">
+        Palette
+        <select
+          class="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none"
+          [value]="heatmapPalette()"
+          (change)="setHeatmapPalette($any($event.target).value)">
+          <option value="classic">Classic</option>
+          <option value="cool">Cool</option>
+          <option value="hot">Hot</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-2 text-xs text-slate-400">
+        <input
+          type="checkbox"
+          class="accent-orange-500"
+          [checked]="showFftOverlay()"
+          (change)="setShowFftOverlay($any($event.target).checked)" />
+        FFT
+      </label>
 
       <button
         type="button"
@@ -192,6 +229,28 @@
   </div>
 
   <div class="relative overflow-hidden rounded-lg border border-slate-800 bg-black">
+    @if (showWaterfallGrid()) {
+      @for (tick of scaleTicks(); track tick.frequencyHz) {
+        <div
+          class="pointer-events-none absolute bottom-0 top-0 z-10 w-px -translate-x-1/2"
+          [style.left.%]="tick.positionPercent"
+          [class.bg-slate-300/20]="tick.major"
+          [class.bg-slate-600/10]="!tick.major">
+        </div>
+      }
+    }
+
+    @if (showBandwidthMarker()) {
+      <div
+        class="pointer-events-none absolute bottom-0 top-0 z-10 border-x border-cyan-300/60 bg-cyan-400/10"
+        [style.left.%]="bandwidthLeftPercent()"
+        [style.width.%]="bandwidthWidthPercent()">
+        <div class="absolute left-1 top-1 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">
+          BW {{ bandwidthLabel() }}
+        </div>
+      </div>
+    }
+
     @if (previewFrequencyHz() && showPreviewFrequencyMarker()) {
       <div
         class="pointer-events-none absolute bottom-0 top-0 z-10 w-0.5 -translate-x-1/2 bg-green-400/80"
@@ -212,6 +271,11 @@
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerCancel($event)"
       (mouseleave)="onMouseLeave()">
+    </canvas>
+
+    <canvas
+      #fftCanvas
+      class="pointer-events-none absolute inset-0 z-20 h-[320px] w-full">
     </canvas>
   </div>
 </div>

@@ -292,8 +292,10 @@
       <app-waterfall-view
         [centerFrequencyHz]="latestWaterfallFrame()?.center_frequency_hz ?? null"
         [currentFrequencyHz]="status()?.frequency_hz ?? null"
+        [currentMode]="status()?.mode ?? null"
         [sampleRateHz]="latestWaterfallFrame()?.sample_rate_hz ?? null"
-        (tuneRequested)="validateAndTune($event)" />
+        (tuneRequested)="validateAndTune($event)"
+        (centerRequested)="validateAndTune($event)" />
     </section>
   </main>
 </div>

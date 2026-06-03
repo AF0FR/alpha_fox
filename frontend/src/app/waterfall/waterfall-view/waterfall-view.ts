@@ -45,9 +45,13 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
   readonly currentFrequencyHz = input<number | null>(null);
   readonly sampleRateHz = input<number | null>(null);
 
+  readonly currentMode = input<string | null>(null);
+
   readonly tuneRequested = output<number>();
+  readonly centerRequested = output<number>();
 
   readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
+  readonly fftCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('fftCanvas');
 
   readonly paused = signal(false);
   readonly hoverFrequencyHz = signal<number | null>(null);
@@ -60,6 +64,10 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
   readonly heatmapContrast = signal<number>(2.0);
   readonly heatmapFloorOffsetDb = signal<number>(0);
   readonly heatmapPalette = signal<'classic' | 'cool' | 'hot'>('classic');
+
+  readonly tuneInteractionMode = signal<'tune' | 'center'>('tune');
+  readonly showWaterfallGrid = signal<boolean>(true);
+  readonly showBandwidthMarker = signal<boolean>(true);
 
   readonly snapOptions = [
     { label: 'Off', value: 0 },
@@ -83,6 +91,7 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
   ];
 
   private context: CanvasRenderingContext2D | null = null;
+  private fftContext: CanvasRenderingContext2D | null = null;
 
   readonly hamBands: HamBand[] = [
     { name: '160m', lowerHz: 1_800_000, upperHz: 2_000_000 },
@@ -98,6 +107,8 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     { name: '6m', lowerHz: 50_000_000, upperHz: 54_000_000 },
   ];
 
+  readonly showFftOverlay = signal<boolean>(true);
+
   constructor() {
     effect(() => {
       const frame = this.waterfallWs.latestFrame();
@@ -110,10 +121,17 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     const canvas = this.canvas().nativeElement;
+    const fftCanvas = this.fftCanvas().nativeElement;
+
     this.context = canvas.getContext('2d', { willReadFrequently: true });
+    this.fftContext = fftCanvas.getContext('2d');
 
     if (this.context) {
       this.context.imageSmoothingEnabled = false;
+    }
+
+    if (this.fftContext) {
+      this.fftContext.imageSmoothingEnabled = false;
     }
 
     this.resizeCanvas();
@@ -130,12 +148,15 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
 
   clear(): void {
     const canvas = this.canvas().nativeElement;
+    const fftCanvas = this.fftCanvas().nativeElement;
 
-    if (!this.context) {
-      return;
+    if (this.context) {
+      this.context.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    this.context.clearRect(0, 0, canvas.width, canvas.height);
+    if (this.fftContext) {
+      this.fftContext.clearRect(0, 0, fftCanvas.width, fftCanvas.height);
+    }
   }
 
   setDisplaySpan(value: string): void {
@@ -177,6 +198,20 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     if (value === 'classic' || value === 'cool' || value === 'hot') {
       this.heatmapPalette.set(value);
     }
+  }
+
+  setTuneInteractionMode(value: string): void {
+    if (value === 'tune' || value === 'center') {
+      this.tuneInteractionMode.set(value);
+    }
+  }
+
+  setShowWaterfallGrid(value: boolean): void {
+    this.showWaterfallGrid.set(value);
+  }
+
+  setShowBandwidthMarker(value: boolean): void {
+    this.showBandwidthMarker.set(value);
   }
 
   onMouseLeave(): void {
@@ -221,6 +256,11 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     this.pendingTuneFrequencyHz.set(null);
 
     if (!frequencyHz || frequencyHz <= 0) {
+      return;
+    }
+
+    if (this.tuneInteractionMode() === 'center') {
+      this.centerRequested.emit(Math.round(frequencyHz));
       return;
     }
 
@@ -342,6 +382,7 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
 
   private readonly resizeCanvas = (): void => {
     const canvas = this.canvas().nativeElement;
+    const fftCanvas = this.fftCanvas().nativeElement;
     const parent = canvas.parentElement;
 
     if (!parent) {
@@ -352,16 +393,28 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     const cssHeight = 320;
     const pixelRatio = window.devicePixelRatio || 1;
 
-    canvas.width = Math.floor(cssWidth * pixelRatio);
-    canvas.height = Math.floor(cssHeight * pixelRatio);
+    const pixelWidth = Math.floor(cssWidth * pixelRatio);
+    const pixelHeight = Math.floor(cssHeight * pixelRatio);
 
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
     canvas.style.width = `${cssWidth}px`;
     canvas.style.height = `${cssHeight}px`;
 
+    fftCanvas.width = pixelWidth;
+    fftCanvas.height = pixelHeight;
+    fftCanvas.style.width = `${cssWidth}px`;
+    fftCanvas.style.height = `${cssHeight}px`;
+
     this.context = canvas.getContext('2d', { willReadFrequently: true });
+    this.fftContext = fftCanvas.getContext('2d');
 
     if (this.context) {
       this.context.imageSmoothingEnabled = false;
+    }
+
+    if (this.fftContext) {
+      this.fftContext.imageSmoothingEnabled = false;
     }
   };
 
@@ -426,6 +479,66 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
       .filter((band): band is VisibleHamBand => band !== null);
   }
 
+  receiveBandwidthHz(): number {
+    const mode = this.currentMode()?.toUpperCase();
+
+    switch (mode) {
+      case 'CW':
+      case 'CWR':
+        return 500;
+
+      case 'AM':
+        return 6_000;
+
+      case 'NFM':
+      case 'FM':
+        return 10_000;
+
+      case 'LSB':
+      case 'USB':
+      default:
+        return 2_400;
+    }
+  }
+
+  bandwidthLeftPercent(): number {
+    const center = this.centerFrequencyHz();
+    const span = this.effectiveSpanHz();
+    const current = this.currentFrequencyHz();
+    const bandwidth = this.receiveBandwidthHz();
+
+    if (!center || !span || !current) {
+      return 50;
+    }
+
+    const visibleLeft = center - span / 2;
+    const passbandLeft = current - bandwidth / 2;
+
+    return Math.max(0, Math.min(100, ((passbandLeft - visibleLeft) / span) * 100));
+  }
+
+  bandwidthWidthPercent(): number {
+    const span = this.effectiveSpanHz();
+
+    if (!span) {
+      return 0;
+    }
+
+    const widthPercent = (this.receiveBandwidthHz() / span) * 100;
+
+    return Math.max(0.25, Math.min(100, widthPercent));
+  }
+
+  bandwidthLabel(): string {
+    const bandwidth = this.receiveBandwidthHz();
+
+    if (bandwidth >= 1_000) {
+      return `${(bandwidth / 1_000).toFixed(1)} kHz`;
+    }
+
+    return `${bandwidth} Hz`;
+  }
+
   private drawFrame(frame: WaterfallFrame): void {
     const canvas = this.canvas().nativeElement;
 
@@ -465,6 +578,21 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
     }
 
     this.context.putImageData(row, 0, 0);
+    if (this.showFftOverlay()) {
+      this.drawFftOverlay(frame, firstVisibleBin, visibleBinCount);
+    } else {
+      this.clearFftOverlay();
+    }
+  }
+
+  private clearFftOverlay(): void {
+    const canvas = this.fftCanvas().nativeElement;
+
+    if (!this.fftContext || canvas.width <= 0 || canvas.height <= 0) {
+      return;
+    }
+
+    this.fftContext.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   private sharpenIntensity(value: number): number {
@@ -573,5 +701,69 @@ export class WaterfallView implements AfterViewInit, OnDestroy {
 
     const t = (value - 0.75) / 0.25;
     return [255, Math.floor(220 + t * 35), Math.floor(t * 220)];
+  }
+
+  setShowFftOverlay(value: boolean): void {
+    this.showFftOverlay.set(value);
+  }
+
+  private drawFftOverlay(
+    frame: WaterfallFrame,
+    firstVisibleBin: number,
+    visibleBinCount: number,
+  ): void {
+    const canvas = this.fftCanvas().nativeElement;
+
+    if (!this.fftContext || canvas.width <= 0 || canvas.height <= 0) {
+      return;
+    }
+
+    const context = this.fftContext;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    const height = canvas.height;
+    const width = canvas.width;
+
+    const topPadding = height * 0.06;
+    const bottomPadding = height * 0.08;
+    const usableHeight = height - topPadding - bottomPadding;
+
+    context.beginPath();
+
+    for (let x = 0; x < width; x++) {
+      const binIndex = firstVisibleBin + Math.floor((x / width) * visibleBinCount);
+      const db = frame.bins[binIndex] ?? frame.min_db;
+
+      const adjustedDb = db + this.heatmapGainDb();
+      const adjustedMinDb = frame.min_db + this.heatmapFloorOffsetDb();
+
+      const intensity = this.sharpenIntensity(
+        this.normalizeDb(adjustedDb, adjustedMinDb, frame.max_db),
+      );
+
+      const y = topPadding + (1 - intensity) * usableHeight;
+
+      if (x === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    }
+
+    context.lineWidth = Math.max(1, window.devicePixelRatio || 1);
+    context.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    context.stroke();
+
+    context.lineTo(width, height - bottomPadding);
+    context.lineTo(0, height - bottomPadding);
+    context.closePath();
+
+    const gradient = context.createLinearGradient(0, topPadding, 0, height - bottomPadding);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0.00)');
+
+    context.fillStyle = gradient;
+    context.fill();
   }
 }
